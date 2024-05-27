@@ -1,8 +1,40 @@
-m4 (1.4.18-5) UNRELEASED; urgency=medium
+m4 (1.4.19-4) unstable; urgency=medium
 
-  * update
+  * Create debian/clean, containing the files which are re-created during
+    the build. This allows a source build after a successful binary build.
+    Closes: #1046299.
 
- -- Santiago Vila <sanvila@debian.org>  Fri, 08 Jul 2022 13:45:02 +0800
+ -- Santiago Vila <sanvila@debian.org>  Sun, 03 Sep 2023 19:55:00 +0200
+
+m4 (1.4.19-3) unstable; urgency=medium
+
+  * Add support for loongarch. Thanks to Dandan Zhang. Closes: #1030117.
+  * Temporarily enable autoreconf for the above to work.
+  * Call makeinfo using --output option. This allows the package to be
+    built with Texinfo 7. Thanks to Hilmar Preusse. Closes: #1030352.
+
+ -- Santiago Vila <sanvila@debian.org>  Fri, 03 Feb 2023 14:00:00 +0100
+
+m4 (1.4.19-2) unstable; urgency=medium
+
+  * Set upstream metadata fields Bug-Submit, Name and Repository-Browse.
+  * Remove field Priority on binary package m4-doc that duplicates source.
+  * Use a common debian/watch file which is valid for most GNU packages.
+  * Update standards version to 4.6.2.
+  * Run wrap-and-sort.
+
+ -- Santiago Vila <sanvila@debian.org>  Thu, 05 Jan 2023 14:50:00 +0100
+
+m4 (1.4.19-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Fix FTBFS with glibc 2.34. Closes: #1017169.
+  * Raise debhelper compatibility level from 10 to 13.
+  * Skip test 198.sysval because it's buggy. Will be fixed in 1.4.20.
+  * Update paths in debian/m4-doc.doc-base, as docs are now installed
+    directly in /usr/share/doc/m4.
+
+ -- Santiago Vila <sanvila@debian.org>  Mon, 15 Aug 2022 17:20:00 +0200
 
 m4 (1.4.18-5) unstable; urgency=medium
 
