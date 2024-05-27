@@ -1,4 +1,2 @@
-01-fix-ftbfs-with-glibc-2.28.patch
-02-documentencoding.patch
-03-remove-date-from-m4-texinfo-file.patch
-uniontech-0001-fix-build-with-glibc-2.35.patch
+01-remove-date-from-m4-texinfo-file.patch
+02-add-support-for-loongarch.patch
