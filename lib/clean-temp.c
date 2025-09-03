@@ -1,11 +1,11 @@
 /* Temporary directories and temporary files with automatic cleanup.
-   Copyright (C) 2001, 2003, 2006-2007, 2009-2021 Free Software Foundation,
+   Copyright (C) 2001, 2003, 2006-2007, 2009-2025 Free Software Foundation,
    Inc.
    Written by Bruno Haible <bruno@clisp.org>, 2006.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 3 of the License, or
+   the Free Software Foundation, either version 3 of the License, or
    (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
@@ -24,7 +24,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -37,7 +36,7 @@
 
 #include "clean-temp-simple.h"
 #include "clean-temp-private.h"
-#include "error.h"
+#include <error.h>
 #include "fatal-signal.h"
 #include "asyncsafe-spin.h"
 #include "pathmax.h"
@@ -46,6 +45,7 @@
 #include "xmalloca.h"
 #include "glthread/lock.h"
 #include "thread-optim.h"
+#include "hashkey-string.h"
 #include "gl_xlist.h"
 #include "gl_linkedhash_list.h"
 #include "gl_linked_list.h"
@@ -66,7 +66,7 @@
 # include "stdio--.h"
 #endif
 
-#define _(str) gettext (str)
+#define _(msgid) dgettext ("gnulib", msgid)
 
 /* GNU Hurd doesn't have PATH_MAX.  Use a fallback.
    Temporary directory names are usually not that long.  */
@@ -220,11 +220,11 @@ create_temp_dir (const char *prefix, const char *parentdir,
   tmpdir->cleanup_verbose = cleanup_verbose;
   tmpdir->subdirs =
     gl_list_create_empty (GL_LINKEDHASH_LIST,
-                          clean_temp_string_equals, clean_temp_string_hash,
+                          hashkey_string_equals, hashkey_string_hash,
                           NULL, false);
   tmpdir->files =
     gl_list_create_empty (GL_LINKEDHASH_LIST,
-                          clean_temp_string_equals, clean_temp_string_hash,
+                          hashkey_string_equals, hashkey_string_hash,
                           NULL, false);
 
   /* Create the temporary directory.  */

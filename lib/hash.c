@@ -1,20 +1,20 @@
 /* hash - hashing table processing.
 
-   Copyright (C) 1998-2004, 2006-2007, 2009-2021 Free Software Foundation, Inc.
+   Copyright (C) 1998-2004, 2006-2007, 2009-2025 Free Software Foundation, Inc.
 
    Written by Jim Meyering, 1992.
 
-   This program is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 3 of the License, or
-   (at your option) any later version.
+   This file is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Lesser General Public License as
+   published by the Free Software Foundation; either version 2.1 of the
+   License, or (at your option) any later version.
 
-   This program is distributed in the hope that it will be useful,
+   This file is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+   GNU Lesser General Public License for more details.
 
-   You should have received a copy of the GNU General Public License
+   You should have received a copy of the GNU Lesser General Public License
    along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* A generic hash table package.  */
@@ -27,8 +27,10 @@
 #include "hash.h"
 
 #include "bitrotate.h"
+#include "next-prime.h"
 #include "xalloc-oversized.h"
 
+#include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -343,95 +345,6 @@ hash_do_for_each (const Hash_table *table, Hash_processor processor,
   return counter;
 }
 
-/* Allocation and clean-up.  */
-
-#if USE_DIFF_HASH
-
-/* About hashings, Paul Eggert writes to me (FP), on 1994-01-01: "Please see
-   B. J. McKenzie, R. Harries & T. Bell, Selecting a hashing algorithm,
-   Software--practice & experience 20, 2 (Feb 1990), 209-224.  Good hash
-   algorithms tend to be domain-specific, so what's good for [diffutils'] io.c
-   may not be good for your application."  */
-
-size_t
-hash_string (const char *string, size_t n_buckets)
-{
-# define HASH_ONE_CHAR(Value, Byte) \
-  ((Byte) + rotl_sz (Value, 7))
-
-  size_t value = 0;
-  unsigned char ch;
-
-  for (; (ch = *string); string++)
-    value = HASH_ONE_CHAR (value, ch);
-  return value % n_buckets;
-
-# undef HASH_ONE_CHAR
-}
-
-#else /* not USE_DIFF_HASH */
-
-/* This one comes from 'recode', and performs a bit better than the above as
-   per a few experiments.  It is inspired from a hashing routine found in the
-   very old Cyber 'snoop', itself written in typical Greg Mansfield style.
-   (By the way, what happened to this excellent man?  Is he still alive?)  */
-
-size_t
-hash_string (const char *string, size_t n_buckets)
-{
-  size_t value = 0;
-  unsigned char ch;
-
-  for (; (ch = *string); string++)
-    value = (value * 31 + ch) % n_buckets;
-  return value;
-}
-
-#endif /* not USE_DIFF_HASH */
-
-/* Return true if CANDIDATE is a prime number.  CANDIDATE should be an odd
-   number at least equal to 11.  */
-
-static bool _GL_ATTRIBUTE_CONST
-is_prime (size_t candidate)
-{
-  size_t divisor = 3;
-  size_t square = divisor * divisor;
-
-  while (square < candidate && (candidate % divisor))
-    {
-      divisor++;
-      square += 4 * divisor;
-      divisor++;
-    }
-
-  return (candidate % divisor ? true : false);
-}
-
-/* Round a given CANDIDATE number up to the nearest prime, and return that
-   prime.  Primes lower than 10 are merely skipped.  */
-
-static size_t _GL_ATTRIBUTE_CONST
-next_prime (size_t candidate)
-{
-  /* Skip small primes.  */
-  if (candidate < 10)
-    candidate = 10;
-
-  /* Make it definitely odd.  */
-  candidate |= 1;
-
-  while (SIZE_MAX != candidate && !is_prime (candidate))
-    candidate += 2;
-
-  return candidate;
-}
-
-void
-hash_reset_tuning (Hash_tuning *tuning)
-{
-  *tuning = default_tuning;
-}
 
 /* If the user passes a NULL hasher, we hash the raw pointer.  */
 static size_t
@@ -453,6 +366,14 @@ raw_comparator (const void *a, const void *b)
   return a == b;
 }
 
+
+/* Allocation and clean-up.  */
+
+void
+hash_reset_tuning (Hash_tuning *tuning)
+{
+  *tuning = default_tuning;
+}
 
 /* For the given hash TABLE, check the user supplied tuning structure for
    reasonable values, and return true if there is no gross error with it.
@@ -499,13 +420,17 @@ compute_bucket_size (size_t candidate, const Hash_tuning *tuning)
     {
       float new_candidate = candidate / tuning->growth_threshold;
       if ((float) SIZE_MAX <= new_candidate)
-        return 0;
+        goto nomem;
       candidate = new_candidate;
     }
   candidate = next_prime (candidate);
   if (xalloc_oversized (candidate, sizeof (struct hash_entry *)))
-    return 0;
+    goto nomem;
   return candidate;
+
+ nomem:
+  errno = ENOMEM;
+  return 0;
 }
 
 Hash_table *
@@ -534,6 +459,7 @@ hash_initialize (size_t candidate, const Hash_tuning *tuning,
          if the user provides invalid tuning options, we silently revert to
          using the defaults, and ignore further request to change the tuning
          options.  */
+      errno = EINVAL;
       goto fail;
     }
 
@@ -607,6 +533,7 @@ hash_free (Hash_table *table)
   struct hash_entry *bucket;
   struct hash_entry *cursor;
   struct hash_entry *next;
+  int err = errno;
 
   /* Call the user data_freer function.  */
   if (table->data_freer && table->n_entries)
@@ -649,6 +576,8 @@ hash_free (Hash_table *table)
   /* Free the remainder of the hash table structure.  */
   free (table->bucket);
   free (table);
+
+  errno = err;
 }
 
 /* Insertion and deletion.  */
@@ -696,8 +625,8 @@ free_entry (Hash_table *table, struct hash_entry *entry)
    the table, unlink the matching entry.  */
 
 static void *
-hash_find_entry (Hash_table *table, const void *entry,
-                 struct hash_entry **bucket_head, bool delete)
+find_entry (Hash_table *table, const void *entry,
+            struct hash_entry **bucket_head, bool delete)
 {
   struct hash_entry *bucket = safe_hasher (table, entry);
   struct hash_entry *cursor;
@@ -762,8 +691,8 @@ hash_find_entry (Hash_table *table, const void *entry,
 /* Internal helper, to move entries from SRC to DST.  Both tables must
    share the same free entry list.  If SAFE, only move overflow
    entries, saving bucket heads for later, so that no allocations will
-   occur.  Return false if the free entry list is exhausted and an
-   allocation fails.  */
+   occur.  Return false (setting errno) if the free entry list is
+   exhausted and an allocation fails.  */
 
 static bool
 transfer_entries (Hash_table *dst, Hash_table *src, bool safe)
@@ -910,12 +839,14 @@ hash_rehash (Hash_table *table, size_t candidate)
      passes.  Two passes give worse cache performance and takes
      longer, but at this point, we're already out of memory, so slow
      and safe is better than failure.  */
+  int err = errno;
   table->free_entry_list = new_table->free_entry_list;
   if (! (transfer_entries (table, new_table, true)
          && transfer_entries (table, new_table, false)))
     abort ();
   /* table->n_entries already holds its value.  */
   free (new_table->bucket);
+  errno = err;
   return false;
 }
 
@@ -927,13 +858,13 @@ hash_insert_if_absent (Hash_table *table, void const *entry,
   struct hash_entry *bucket;
 
   /* The caller cannot insert a NULL entry, since hash_lookup returns NULL
-     to indicate "not found", and hash_find_entry uses "bucket->data == NULL"
+     to indicate "not found", and find_entry uses "bucket->data == NULL"
      to indicate an empty bucket.  */
   if (! entry)
     abort ();
 
   /* If there's a matching entry already in the table, return that.  */
-  if ((data = hash_find_entry (table, entry, &bucket, false)) != NULL)
+  if ((data = find_entry (table, entry, &bucket, false)) != NULL)
     {
       if (matched_ent)
         *matched_ent = data;
@@ -962,14 +893,17 @@ hash_insert_if_absent (Hash_table *table, void const *entry,
                 * tuning->growth_threshold));
 
           if ((float) SIZE_MAX <= candidate)
-            return -1;
+            {
+              errno = ENOMEM;
+              return -1;
+            }
 
           /* If the rehash fails, arrange to return NULL.  */
           if (!hash_rehash (table, candidate))
             return -1;
 
           /* Update the bucket we are interested in.  */
-          if (hash_find_entry (table, entry, &bucket, false) != NULL)
+          if (find_entry (table, entry, &bucket, false) != NULL)
             abort ();
         }
     }
@@ -1017,7 +951,7 @@ hash_remove (Hash_table *table, const void *entry)
   void *data;
   struct hash_entry *bucket;
 
-  data = hash_find_entry (table, entry, &bucket, true);
+  data = find_entry (table, entry, &bucket, true);
   if (!data)
     return NULL;
 
@@ -1069,12 +1003,6 @@ hash_remove (Hash_table *table, const void *entry)
     }
 
   return data;
-}
-
-void *
-hash_delete (Hash_table *table, const void *entry)
-{
-  return hash_remove (table, entry);
 }
 
 /* Testing.  */

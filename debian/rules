@@ -2,7 +2,7 @@
 
 package = m4
 
-export DEB_BUILD_MAINT_OPTIONS=hardening=-format
+export DEB_BUILD_MAINT_OPTIONS = hardening=-format
 
 %:
 	dh $@
@@ -11,14 +11,10 @@ override_dh_auto_clean:
 	[ ! -f Makefile ] || $(MAKE) distclean
 	rm -rf doc/$(package)
 
-# override_dh_autoreconf:
+override_dh_autoreconf:
 
 override_dh_auto_configure:
 	dh_auto_configure -- --disable-rpath
-
-override_dh_auto_test:
-	rm -f checks/198.sysval
-	dh_auto_test
 
 override_dh_installdocs-indep:
 	cd doc && makeinfo --html --output=$(package) $(package).texi
@@ -26,3 +22,6 @@ override_dh_installdocs-indep:
 
 override_dh_installdocs-arch:
 	dh_installdocs -a NEWS README TODO THANKS
+
+override_dh_installchangelogs:
+	dh_installchangelogs --no-trim

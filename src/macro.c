@@ -1,6 +1,6 @@
 /* GNU m4 -- A simple macro processor
 
-   Copyright (C) 1989-1994, 2006-2007, 2009-2014, 2016-2017, 2020-2021
+   Copyright (C) 1989-1994, 2006-2007, 2009-2014, 2016-2017, 2020-2025
    Free Software Foundation, Inc.
 
    This file is part of GNU M4.
@@ -85,7 +85,7 @@ expand_token (struct obstack *obs, token_type t, token_data *td, int line)
   symbol *sym;
 
   switch (t)
-    { /* TOKSW */
+    {                           /* TOKSW */
     case TOKEN_EOF:
     case TOKEN_MACDEF:
       break;
@@ -100,11 +100,11 @@ expand_token (struct obstack *obs, token_type t, token_data *td, int line)
       break;
 
     case TOKEN_WORD:
-      sym = lookup_symbol (TOKEN_DATA_TEXT (td), SYMBOL_LOOKUP);
+      sym = lookup_symbol (TOKEN_DATA_TEXT (td), TOKEN_DATA_LEN (td),
+                           SYMBOL_LOOKUP);
       if (sym == NULL || SYMBOL_TYPE (sym) == TOKEN_VOID
           || (SYMBOL_TYPE (sym) == TOKEN_FUNC
-              && SYMBOL_BLIND_NO_ARGS (sym)
-              && peek_token () != TOKEN_OPEN))
+              && SYMBOL_BLIND_NO_ARGS (sym) && peek_token () != TOKEN_OPEN))
         {
 #ifdef ENABLE_CHANGEWORD
           shipout_text (obs, TOKEN_DATA_ORIG_TEXT (td),
@@ -145,6 +145,7 @@ expand_argument (struct obstack *obs, token_data *argp)
   int paren_level;
   const char *file = current_file;
   int line = current_line;
+  size_t len;
 
   TOKEN_DATA_TYPE (argp) = TOKEN_VOID;
 
@@ -161,19 +162,21 @@ expand_argument (struct obstack *obs, token_data *argp)
     {
 
       switch (t)
-        { /* TOKSW */
+        {                       /* TOKSW */
         case TOKEN_COMMA:
         case TOKEN_CLOSE:
           if (paren_level == 0)
             {
               /* The argument MUST be finished, whether we want it or not.  */
               obstack_1grow (obs, '\0');
+              len = obstack_object_size (obs) - 1;
               text = (char *) obstack_finish (obs);
 
               if (TOKEN_DATA_TYPE (argp) == TOKEN_VOID)
                 {
                   TOKEN_DATA_TYPE (argp) = TOKEN_TEXT;
                   TOKEN_DATA_TEXT (argp) = text;
+                  TOKEN_DATA_LEN (argp) = len;
                 }
               return t == TOKEN_COMMA;
             }
@@ -235,12 +238,13 @@ collect_arguments (symbol *sym, struct obstack *argptr,
 
   TOKEN_DATA_TYPE (&td) = TOKEN_TEXT;
   TOKEN_DATA_TEXT (&td) = SYMBOL_NAME (sym);
+  TOKEN_DATA_LEN (&td) = SYMBOL_NAME_LEN (sym);
   tdp = (token_data *) obstack_copy (arguments, &td, sizeof td);
   obstack_ptr_grow (argptr, tdp);
 
   if (peek_token () == TOKEN_OPEN)
     {
-      next_token (&td, NULL); /* gobble parenthesis */
+      next_token (&td, NULL);   /* gobble parenthesis */
       do
         {
           more_args = expand_argument (arguments, &td);
@@ -249,6 +253,7 @@ collect_arguments (symbol *sym, struct obstack *argptr,
             {
               TOKEN_DATA_TYPE (&td) = TOKEN_TEXT;
               TOKEN_DATA_TEXT (&td) = (char *) "";
+              TOKEN_DATA_LEN (&td) = 0;
             }
           tdp = (token_data *) obstack_copy (arguments, &td, sizeof td);
           obstack_ptr_grow (argptr, tdp);
@@ -270,7 +275,7 @@ collect_arguments (symbol *sym, struct obstack *argptr,
 
 void
 call_macro (symbol *sym, int argc, token_data **argv,
-                 struct obstack *expansion)
+            struct obstack *expansion)
 {
   switch (SYMBOL_TYPE (sym))
     {
@@ -329,7 +334,8 @@ expand_macro (symbol *sym)
   SYMBOL_PENDING_EXPANSIONS (sym)++;
   expansion_level++;
   if (nesting_limit > 0 && expansion_level > nesting_limit)
-    m4_failure (0, _("recursion limit of %d exceeded, use -L<N> to change it"),
+    m4_failure (0,
+                _("recursion limit of %d exceeded, use -L<N> to change it"),
                 nesting_limit);
 
   macro_call_id++;
@@ -385,5 +391,5 @@ expand_macro (symbol *sym)
     obstack_free (&argc_stack, argv[0]);
   else
     obstack_free (&arguments, NULL);
-  obstack_blank_fast (&argv_stack, -argc * sizeof (token_data *));
+  obstack_blank_fast (&argv_stack, -argc * (ptrdiff_t) sizeof (token_data *));
 }

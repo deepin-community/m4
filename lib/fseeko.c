@@ -1,18 +1,18 @@
 /* An fseeko() function that, together with fflush(), is POSIX compliant.
-   Copyright (C) 2007-2021 Free Software Foundation, Inc.
+   Copyright (C) 2007-2025 Free Software Foundation, Inc.
 
-   This program is free software; you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 3, or (at your option)
-   any later version.
+   This file is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Lesser General Public License as
+   published by the Free Software Foundation; either version 2.1 of the
+   License, or (at your option) any later version.
 
-   This program is distributed in the hope that it will be useful,
+   This file is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+   GNU Lesser General Public License for more details.
 
-   You should have received a copy of the GNU General Public License along
-   with this program; if not, see <https://www.gnu.org/licenses/>.  */
+   You should have received a copy of the GNU Lesser General Public License
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 #include <config.h>
 
@@ -48,10 +48,13 @@ fseeko (FILE *fp, off_t offset, int whence)
 
   /* These tests are based on fpurge.c.  */
 #if defined _IO_EOF_SEEN || defined _IO_ftrylockfile || __GNU_LIBRARY__ == 1
+# if !defined __HAIKU__
+#  define fp_ fp
+# endif
   /* GNU libc, BeOS, Haiku, Linux libc5 */
-  if (fp->_IO_read_end == fp->_IO_read_ptr
-      && fp->_IO_write_ptr == fp->_IO_write_base
-      && fp->_IO_save_base == NULL)
+  if (fp_->_IO_read_end == fp_->_IO_read_ptr
+      && fp_->_IO_write_ptr == fp_->_IO_write_base
+      && fp_->_IO_save_base == NULL)
 #elif defined __sferror || defined __DragonFly__ || defined __ANDROID__
   /* FreeBSD, NetBSD, OpenBSD, DragonFly, Mac OS X, Cygwin, Minix 3, Android */
 # if defined __SL64 && defined __SCLE /* Cygwin */
@@ -126,8 +129,8 @@ fseeko (FILE *fp, off_t offset, int whence)
 
 #if defined _IO_EOF_SEEN || defined _IO_ftrylockfile || __GNU_LIBRARY__ == 1
       /* GNU libc, BeOS, Haiku, Linux libc5 */
-      fp->_flags &= ~_IO_EOF_SEEN;
-      fp->_offset = pos;
+      fp_->_flags &= ~_IO_EOF_SEEN;
+      fp_->_offset = pos;
 #elif defined __sferror || defined __DragonFly__ || defined __ANDROID__
       /* FreeBSD, NetBSD, OpenBSD, DragonFly, Mac OS X, Cygwin, Minix 3, Android */
 # if defined __CYGWIN__ || (defined __NetBSD__ && __NetBSD_Version__ >= 600000000) || defined __minix

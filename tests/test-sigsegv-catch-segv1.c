@@ -1,5 +1,5 @@
 /* Test that the handler is called, with the right fault address.
-   Copyright (C) 2002-2021  Bruno Haible <bruno@clisp.org>
+   Copyright (C) 2002-2025 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -13,6 +13,8 @@
 
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
+
+/* Written by Bruno Haible.  */
 
 #include <config.h>
 
@@ -29,7 +31,7 @@
 
 # if SIGSEGV_FAULT_ADDRESS_ALIGNMENT > 1UL
 #  include <unistd.h>
-#  define SIGSEGV_FAULT_ADDRESS_ROUNDOFF_BITS (getpagesize () - 1)
+#  define SIGSEGV_FAULT_ADDRESS_ROUNDOFF_BITS (sysconf (_SC_PAGESIZE) - 1)
 # else
 #  define SIGSEGV_FAULT_ADDRESS_ROUNDOFF_BITS 0
 # endif
@@ -38,7 +40,7 @@ uintptr_t page;
 
 volatile int handler_called = 0;
 
-int
+static int
 handler (void *fault_address, int serious)
 {
   handler_called++;
@@ -52,7 +54,7 @@ handler (void *fault_address, int serious)
   return 0;
 }
 
-void
+static void
 crasher (uintptr_t p)
 {
   *(volatile int *) (p + 0x678) = 42;
@@ -77,7 +79,7 @@ main ()
   prot_unwritable = PROT_READ;
 # endif
 
-  /* Setup some mmaped memory.  */
+  /* Setup some mmapped memory.  */
   p = mmap_zeromap ((void *) 0x12340000, 0x4000);
   if (p == (void *)(-1))
     {
