@@ -1,18 +1,18 @@
 /* Temporary files with automatic cleanup.
-   Copyright (C) 2006-2021 Free Software Foundation, Inc.
+   Copyright (C) 2006-2025 Free Software Foundation, Inc.
    Written by Bruno Haible <bruno@clisp.org>, 2006.
 
-   This program is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 3 of the License, or
-   (at your option) any later version.
+   This file is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Lesser General Public License as
+   published by the Free Software Foundation; either version 2.1 of the
+   License, or (at your option) any later version.
 
-   This program is distributed in the hope that it will be useful,
+   This file is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+   GNU Lesser General Public License for more details.
 
-   You should have received a copy of the GNU General Public License
+   You should have received a copy of the GNU Lesser General Public License
    along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 #include <config.h>
@@ -22,23 +22,23 @@
 #include "clean-temp-private.h"
 
 #include <errno.h>
-#include <limits.h>
 #include <signal.h>
-#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
-#include "error.h"
+#include <error.h>
 #include "fatal-signal.h"
 #include "asyncsafe-spin.h"
 #include "glthread/lock.h"
+#include "glthread/once.h"
 #include "thread-optim.h"
 #include "gl_list.h"
 #include "gl_linkedhash_list.h"
+#include "hashkey-string.h"
 #include "gettext.h"
 
-#define _(str) gettext (str)
+#define _(msgid) dgettext ("gnulib", msgid)
 
 
 /* Lock that protects the file_cleanup_list from concurrent modification in
@@ -106,33 +106,6 @@ gl_list_t /* <closeable_fd *> */ volatile descriptors;
         asynchronous signal.
  */
 
-/* String equality and hash code functions used by the lists.  */
-
-bool
-clean_temp_string_equals (const void *x1, const void *x2)
-{
-  const char *s1 = (const char *) x1;
-  const char *s2 = (const char *) x2;
-  return strcmp (s1, s2) == 0;
-}
-
-#define SIZE_BITS (sizeof (size_t) * CHAR_BIT)
-
-/* A hash function for NUL-terminated char* strings using
-   the method described by Bruno Haible.
-   See https://www.haible.de/bruno/hashfunc.html.  */
-size_t
-clean_temp_string_hash (const void *x)
-{
-  const char *s = (const char *) x;
-  size_t h = 0;
-
-  for (; *s; s++)
-    h = *s + ((h << 9) | (h >> (SIZE_BITS - 9)));
-
-  return h;
-}
-
 
 /* The set of fatal signal handlers.
    Cached here because we are not allowed to call get_fatal_signal_set ()
@@ -184,7 +157,7 @@ clean_temp_init_asyncsafe_close (void)
 
 /* The signal handler.  It gets called asynchronously.  */
 static _GL_ASYNC_SAFE void
-cleanup_action (int sig _GL_UNUSED)
+cleanup_action (_GL_UNUSED int sig)
 {
   size_t i;
 
@@ -326,8 +299,8 @@ register_temporary_file (const char *absolute_file_name)
         }
       file_cleanup_list =
         gl_list_nx_create_empty (GL_LINKEDHASH_LIST,
-                                 clean_temp_string_equals,
-                                 clean_temp_string_hash,
+                                 hashkey_string_equals,
+                                 hashkey_string_hash,
                                  NULL, false);
       if (file_cleanup_list == NULL)
         {

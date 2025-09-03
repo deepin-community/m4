@@ -1,17 +1,17 @@
 /* Implementation details of FILE streams.
-   Copyright (C) 2007-2008, 2010-2021 Free Software Foundation, Inc.
+   Copyright (C) 2007-2008, 2010-2025 Free Software Foundation, Inc.
 
-   This program is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 3 of the License, or
-   (at your option) any later version.
+   This file is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Lesser General Public License as
+   published by the Free Software Foundation; either version 2.1 of the
+   License, or (at your option) any later version.
 
-   This program is distributed in the hope that it will be useful,
+   This file is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+   GNU Lesser General Public License for more details.
 
-   You should have received a copy of the GNU General Public License
+   You should have received a copy of the GNU Lesser General Public License
    along with this program.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* Many stdio implementations have the same logic and therefore can share
@@ -27,6 +27,49 @@
 # endif
 # if !defined _IO_IN_BACKUP
 #  define _IO_IN_BACKUP 0x100
+# endif
+#endif
+
+/* Haiku stdio implementation.  */
+#if defined __HAIKU__
+# include <stdint.h>
+/* This FILE structure was made into an incomplete type in 2025.
+   See <https://cgit.haiku-os.org/haiku/tree/src/system/libroot/posix/glibc/libio/libio.h>.  */
+#  define fp_ ((struct { int _flags; \
+                         char *_IO_read_ptr; \
+                         char *_IO_read_end; \
+                         char *_IO_read_base; \
+                         char *_IO_write_base; \
+                         char *_IO_write_ptr; \
+                         char *_IO_write_end; \
+                         char *_IO_buf_base; \
+                         char *_IO_buf_end; \
+                         char *_IO_save_base; \
+                         char *_IO_backup_base; \
+                         char *_IO_save_end; \
+                         void *_markers; \
+                         void *_chain; \
+                         int _fileno; \
+                         int _flags2; \
+                         off_t _old_offset; \
+                         unsigned short _cur_column; \
+                         signed char _vtable_offset; \
+                         char _shortbuf[1]; \
+                         void *_lock; \
+                         int64_t _offset; \
+                         /* More fields, not relevant here.  */ \
+                       } *) fp)
+# if !defined _IO_UNBUFFERED
+#  define _IO_UNBUFFERED 0x2
+# endif
+# if !defined _IO_EOF_SEEN
+#  define _IO_EOF_SEEN 0x10
+# endif
+# if !defined _IO_IN_BACKUP
+#  define _IO_IN_BACKUP 0x100
+# endif
+# if !defined _IO_LINE_BUF
+#  define _IO_LINE_BUF 0x200
 # endif
 #endif
 
@@ -71,6 +114,12 @@
 #  else
 #   define _gl_flags_file_t short
 #  endif
+#  ifdef __LP64__
+#   define _gl_file_offset_t int64_t
+#  else
+    /* see https://android.googlesource.com/platform/bionic/+/master/docs/32-bit-abi.md */
+#   define _gl_file_offset_t __kernel_off_t
+#  endif
   /* Up to this commit from 2015-10-12
      <https://android.googlesource.com/platform/bionic.git/+/f0141dfab10a4b332769d52fa76631a64741297a>
      the innards of FILE were public, and fp_ub could be defined like for OpenBSD,
@@ -96,7 +145,7 @@
                          unsigned char _nbuf[1]; \
                          struct { unsigned char *_base; size_t _size; } _lb; \
                          int _blksize; \
-                         fpos_t _offset; \
+                         _gl_file_offset_t _offset; \
                          /* More fields, not relevant here.  */ \
                        } *) fp)
 # else
@@ -104,7 +153,7 @@
 # endif
 
 # if (defined __NetBSD__ && __NetBSD_Version__ >= 105270000) || defined __OpenBSD__ || defined __minix /* NetBSD >= 1.5ZA, OpenBSD, Minix 3 */
-  /* See <http://cvsweb.netbsd.org/bsdweb.cgi/src/lib/libc/stdio/fileext.h?rev=HEAD&content-type=text/x-cvsweb-markup>
+  /* See <https://cvsweb.netbsd.org/bsdweb.cgi/src/lib/libc/stdio/fileext.h?rev=HEAD&content-type=text/x-cvsweb-markup>
      and <https://cvsweb.openbsd.org/cgi-bin/cvsweb/src/lib/libc/stdio/fileext.h?rev=HEAD&content-type=text/x-cvsweb-markup>
      and <https://github.com/Stichting-MINIX-Research-Foundation/minix/blob/master/lib/libc/stdio/fileext.h> */
   struct __sfileext
