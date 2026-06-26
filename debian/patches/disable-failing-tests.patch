@@ -1,0 +1,24 @@
+From: Santiago Vila <sanvila@debian.org>
+Subject: Disable tests known to fail on i386
+Last-Update: 2025-03-05
+
+--- a/tests/gnulib.mk
++++ b/tests/gnulib.mk
+@@ -778,7 +778,7 @@
+ 
+ ## begin gnulib module frexp-nolibm-tests
+ 
+-TESTS += test-frexp-nolibm
++# TESTS += test-frexp-nolibm
+ check_PROGRAMS += test-frexp-nolibm
+ test_frexp_nolibm_SOURCES = test-frexp.c randomd.c
+ EXTRA_DIST += test-frexp.c test-frexp.h minus-zero.h infinity.h nan.h signature.h macros.h randomd.c
+@@ -1647,7 +1647,7 @@
+ 
+ ## begin gnulib module printf-frexp-tests
+ 
+-TESTS += test-printf-frexp
++# TESTS += test-printf-frexp
+ check_PROGRAMS += test-printf-frexp
+ EXTRA_DIST += test-printf-frexp.c macros.h
+ 

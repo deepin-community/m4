@@ -2,7 +2,8 @@
 
 package = m4
 
-export DEB_BUILD_MAINT_OPTIONS=hardening=-format
+export DEB_BUILD_MAINT_OPTIONS = hardening=-format
+export DEB_CFLAGS_MAINT_APPEND = -std=c17
 
 %:
 	dh $@
@@ -26,3 +27,6 @@ override_dh_installdocs-indep:
 
 override_dh_installdocs-arch:
 	dh_installdocs -a NEWS README TODO THANKS
+
+override_dh_installchangelogs:
+	dh_installchangelogs --no-trim
