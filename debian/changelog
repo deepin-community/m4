@@ -1,3 +1,32 @@
+m4 (1.4.19-8) unstable; urgency=medium
+
+  * Add missing autopkgtest dependency on make.
+
+ -- Santiago Vila <sanvila@debian.org>  Sun, 20 Apr 2025 20:25:00 +0200
+
+m4 (1.4.19-7) unstable; urgency=medium
+
+  * Disable tests which fail on i386 with new glibc.
+
+ -- Santiago Vila <sanvila@debian.org>  Wed, 05 Mar 2025 20:40:00 +0100
+
+m4 (1.4.19-6) unstable; urgency=medium
+
+  * Build using C17 standard. Closes: #1097346.
+  * Add Vcs-Git and Vcs-Browser fields.
+  * Update Standards-Version.
+
+ -- Santiago Vila <sanvila@debian.org>  Wed, 05 Mar 2025 19:10:00 +0100
+
+m4 (1.4.19-5) unstable; urgency=medium
+
+  * Add a preliminary debian/salsa-ci.yml.
+  * Add autopkgtests.
+  * Do not trim Debian changelog.
+  * Update Standards-Version.
+
+ -- Santiago Vila <sanvila@debian.org>  Tue, 07 Jan 2025 12:25:00 +0100
+
 m4 (1.4.19-4) unstable; urgency=medium
 
   * Create debian/clean, containing the files which are re-created during

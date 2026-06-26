@@ -1,0 +1,8 @@
+#!/bin/sh
+set -e
+PROGRAMS="m4"
+for a in ${PROGRAMS}; do
+  ln -sf /usr/bin/${a} src/${a}
+done
+rm -f checks/198.sysval
+make -C checks check
